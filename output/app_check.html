@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Campus Customs: App Check (Problem 11)</title>
+<style>
+  :root {
+    --black: #0b0b0d; --card: #141418; --line: #2c2c34;
+    --pink: #ff4fa3; --pink-soft: #ffc2df; --text: #f5f2f4; --muted: #a8a2a8; --pass: #3ddc84;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--black); color: var(--text); font: 16px/1.6 -apple-system, "Segoe UI", Inter, Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 48px 24px 80px; }
+  h1 { font-size: 2.2rem; margin: 0 0 6px; }
+  h1 span, h2 .num { color: var(--pink); }
+  h2 { font-size: 1.5rem; margin: 0 0 4px; }
+  h3 { font-size: 1rem; margin: 22px 0 8px; color: var(--pink-soft); }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 36px; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  td a { color: var(--pink); }
+  .pass { display: inline-block; padding: 2px 10px; border-radius: 999px; background: rgba(61, 220, 132, 0.15); color: var(--pass); font-weight: 700; font-size: 0.8rem; }
+  section.check { background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--pink); border-radius: 16px; padding: 28px; margin: 0 0 32px; }
+  .goal { color: var(--muted); margin: 0 0 18px; }
+  figure { margin: 0 0 18px; }
+  figure img { display: block; width: 100%; border-radius: 10px; border: 1px solid var(--line); cursor: zoom-in; }
+  figcaption { margin-top: 10px; font-size: 0.97rem; }
+  figcaption strong { color: var(--pink); }
+  .verify { background: #0f0f12; border: 1px dashed var(--line); border-radius: 10px; padding: 12px 14px; font: 0.82rem/1.5 ui-monospace, Menlo, Consolas, monospace; color: #d8d3d6; overflow-x: auto; white-space: pre; }
+  .verify b { color: var(--pass); font-weight: 600; }
+  .env { font-size: 0.88rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; margin-top: 40px; }
+  code { background: #1e1e24; padding: 1px 6px; border-radius: 5px; font-size: 0.88em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Campus Customs: <span>App Check</span></h1>
+  <p class="sub">Problem 11 · Live-site test of the running app (React front end + FastAPI / PydanticAI agent) · Tested Oct 6, 2026 · Every number in the screenshots was checked against <code>data/campus_customs.db</code>.</p>
+
+  <table>
+    <thead><tr><th>#</th><th>Check</th><th>Result</th><th>Screenshots</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><a href="#check-1">Chat checks an item's inventory level (honest stock and price from the DB)</a></td><td><span class="pass">PASS</span></td><td>inventory.png, inventory_soldout.png</td></tr>
+      <tr><td>2</td><td><a href="#check-2">Dynamic search-result cards appear after a category question ("hoodies")</a></td><td><span class="pass">PASS</span></td><td>search_cards.png, search_detail.png</td></tr>
+      <tr><td>3</td><td><a href="#check-3">Problem 9 usability feature: sort, size, and price filters</a></td><td><span class="pass">PASS</span></td><td>usability_filters.png</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ===================== CHECK 1 ===================== -->
+  <section class="check" id="check-1">
+    <h2><span class="num">Check 1</span> · Chat checks the inventory level of an item</h2>
+    <p class="goal">Goal: the Bulldog Assistant answers a stock and price question with the real numbers from the database, not invented ones.</p>
+
+    <h3>1a. In-stock size, with price</h3>
+    <figure>
+      <a href="app_check_images/inventory.png" target="_blank"><img src="app_check_images/inventory.png" alt="Baseball Left Chest Crewneck product page with the chat answering that medium has only 5 left at $58" /></a>
+      <figcaption>
+        On the Baseball Left Chest Crewneck page, a guest asked <em>"Is this in stock in a medium? How much is it?"</em> The chat replied <strong>"available in medium, with only 5 left. It's $58"</strong>, matching the page's own stock note ("Only 5 left in M") and price ($58.00). It knew which item "this" meant from the page context (see the "Viewing: Baseball Left Chest Crewneck" chip).
+      </figcaption>
+    </figure>
+
+    <h3>1b. Sold-out size is stated clearly</h3>
+    <figure>
+      <a href="app_check_images/inventory_soldout.png" target="_blank"><img src="app_check_images/inventory_soldout.png" alt="Chat saying the XL is sold out and suggesting two in-stock XL alternatives" /></a>
+      <figcaption>
+        Follow-up <em>"What about XL?"</em> got <strong>"Sorry, the XL is sold out"</strong>. It didn't pretend there was stock, and it offered two crewnecks that <em>are</em> in stock in XL, each with its real count (20 in stock).
+      </figcaption>
+    </figure>
+
+    <div class="verify">$ sqlite3 data/campus_customs.db "SELECT name, price, size, quantity FROM catalogue JOIN inventory USING(product_id)
+    WHERE product_id='baseball-left-chest-crewneck' AND size IN ('M','XL')"
+Baseball Left Chest Crewneck | 58.0 | M  | <b>5</b>      ← chat: "only 5 left", "$58"
+Baseball Left Chest Crewneck | 58.0 | XL | <b>0</b>      ← chat: "the XL is sold out"
+Davenport College Crewneck (XL)                     <b>20</b>     ← chat: "20 in stock"
+Hype And Vice Yale University Offside Crewneck (XL) <b>20</b>     ← chat: "20 in stock"</div>
+  </section>
+
+  <!-- ===================== CHECK 2 ===================== -->
+  <section class="check" id="check-2">
+    <h2><span class="num">Check 2</span> · Dynamic search-result cards after a category question</h2>
+    <p class="goal">Goal: asking about a type of item makes the website show all the matching products as cards, and those cards still open the single-item page.</p>
+
+    <h3>2a. "What hoodies do you have?" puts 27 cards on the page</h3>
+    <figure>
+      <a href="app_check_images/search_cards.png" target="_blank"><img src="app_check_images/search_cards.png" alt="Products page showing a From the Bulldog Assistant: Hoodies banner with 27 matches and hoodie cards, next to the chat reply" /></a>
+      <figcaption>
+        Asked from the <strong>Home page</strong>, the agent searched the catalogue and returned structured matches. The site switched to Products and rendered a <strong>"From the Bulldog Assistant: Hoodies · 27 of 27 matches"</strong> banner with product cards (image, name, hang-tag price, short description, sizes). The chat reply says "We have 27 hoodies… I've put them all on the page", and 27 is exactly the number of hoodies in the catalogue.
+      </figcaption>
+    </figure>
+
+    <h3>2b. A chat-pulled card opens the detail view</h3>
+    <figure>
+      <a href="app_check_images/search_detail.png" target="_blank"><img src="app_check_images/search_detail.png" alt="Product detail page for Brooks Brothers Double Knit Full Zip Hoodie Yale with a Back to Hoodies link" /></a>
+      <figcaption>
+        Clicking one of those cards (Brooks Brothers Double Knit Full Zip Hoodie) opened the <strong>same single-item page from Problem 3</strong>: large image on the left, and full description, price ($88.00), colors, and stock by size on the right. The <strong>"← Back to Hoodies"</strong> link returns to the chat's results.
+      </figcaption>
+    </figure>
+
+    <div class="verify">$ curl localhost:8000/api/products | count category == "Hoodies"
+Hoodies category: <b>27</b>        ← page banner: "27 of 27 matches"; chat: "We have 27 hoodies"</div>
+  </section>
+
+  <!-- ===================== CHECK 3 ===================== -->
+  <section class="check" id="check-3">
+    <h2><span class="num">Check 3</span> · Problem 9 usability feature: sort, size, and price filters</h2>
+    <p class="goal">Goal: shoppers can narrow the catalogue to what they can actually buy in their size and budget, and the view is kept in the URL.</p>
+
+    <figure>
+      <a href="app_check_images/usability_filters.png" target="_blank"><img src="app_check_images/usability_filters.png" alt="Products page filtered to Crewnecks, Size XL, Under $60, sorted price high to low, showing 23 products" /></a>
+      <figcaption>
+        With <strong>Crewnecks</strong> + <strong>Available in: Size XL</strong> + <strong>Under $60</strong> + <strong>Price: high to low</strong>, the page shows <strong>23 products</strong>, and every card's size strip shows XL in stock (sold-out sizes are crossed out). The "Clear filters (4)" link counts the active filters. The URL <code>/products?cat=Crewnecks&amp;size=XL&amp;sort=price-desc&amp;max=60</code> reproduces this exact view, so the back button and shared links keep it.
+      </figcaption>
+    </figure>
+
+    <div class="verify">$ curl localhost:8000/api/products | filter category=="Crewnecks" and "XL" in sizes_in_stock and price < 60
+Matches: <b>23</b>   prices (high → low): <b>$58 … $45</b>     ← page: "23 products", $58 cards first</div>
+    <p class="goal" style="margin-top:14px">Two more Problem 9 features also appear in the screenshots above:
+      <strong>suggestion chips</strong> in the chat ("Is this in stock in M?", "What colors does this come in?") in 1a, and the
+      <strong>find_similar_products</strong> tool suggesting in-stock XL alternatives in 1b.</p>
+  </section>
+
+  <p class="env">
+    <strong>Test setup:</strong> front end <code>npm --prefix frontend run dev</code> (http://localhost:5180), backend <code>cd backend &amp;&amp; uvicorn main:app --reload --port 8000</code>, agent model <code>gpt-5.6-luna</code> through Portkey. Browsed as a <em>guest</em> (logged out) at a 1280×800 desktop size. Screenshots are in <code>output/app_check_images/</code>. Click any screenshot to open it full size.
+  </p>
+</main>
+</body>
+</html>
